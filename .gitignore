@@ -1,0 +1,25 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+
+# Env
+.env
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Temp / Test
+test.py
+tmp_test.py
+tmp_*.py
+
+# mp3 music file
+*.mp3
