@@ -1,7 +1,7 @@
-# pip install llvmlite==0.43.0 numba==0.60.0 librosa
 import librosa
+import numpy as np
 
-def calculate_bpm(audio_path: str) -> float:
-    y, sr = librosa.load(audio_path)
+
+def calculate_bpm(y: np.ndarray, sr: int) -> float:
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    return float(tempo)
+    return round(float(np.asarray(tempo).reshape(-1)[0]), 2)
