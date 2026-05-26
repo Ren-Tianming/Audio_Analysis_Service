@@ -41,14 +41,14 @@ export type ApiKey = { id: number; key_prefix: string; name: string; status: str
 export type ApiUsage = { id: number; key_prefix: string; endpoint: string; status_code: number; points_cost: number; created_at: string };
 export type Transaction = { id: number; transaction_type: string; points_change: number; description: string; created_at: string };
 
-let accessToken = localStorage.getItem("neonwave_token") ?? "";
+let accessToken = localStorage.getItem("rythm_music_analys_token") ?? "";
 
 export function setToken(token: string): void {
   accessToken = token;
   if (token) {
-    localStorage.setItem("neonwave_token", token);
+    localStorage.setItem("rythm_music_analys_token", token);
   } else {
-    localStorage.removeItem("neonwave_token");
+    localStorage.removeItem("rythm_music_analys_token");
   }
 }
 

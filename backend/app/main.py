@@ -16,7 +16,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
-logger = logging.getLogger("neonwave")
+logger = logging.getLogger("rythm_music_analys")
 
 
 @asynccontextmanager
@@ -59,4 +59,4 @@ def health_check() -> dict[str, str]:
 
 @app.get("/")
 def root() -> dict[str, str]:
-    return {"message": "NeonWave API", "docs": "/docs", "health": "/health"}
+    return {"message": "RyThM_Music_Analys API", "docs": "/docs", "health": "/health"}

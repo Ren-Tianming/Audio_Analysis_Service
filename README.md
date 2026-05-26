@@ -1,6 +1,10 @@
-# NeonWave Audio Analysis SaaS
+# RyThM_Music_Analys
 
-音楽制作者・DJ・映像クリエイター向けの音源解析 SaaS 商用化雛形です。音源をアップロードすると BPM、Key、Duration、LUFS、RMS、波形、スペクトログラムを解析し、ポイント台帳、解析履歴、PDF レポート、API キー、疑似決済、管理者監査まで一つのプロダクトとして扱えます。
+<p align="center">
+  <img src="frontend/public/rythm-logo.png" alt="RyThM_Music_Analys logo" width="240">
+</p>
+
+音楽制作者・DJ・映像クリエイター向けの音源解析 SaaS `RyThM_Music_Analys` です。音源をアップロードすると BPM、Key、Duration、LUFS、RMS、波形、スペクトログラムを解析し、ポイント台帳、解析履歴、PDF レポート、API キー、疑似決済、管理者監査まで一つのプロダクトとして扱えます。
 
 本実装は `audio_analysis_saas_v1_3_requirements_jp.docx` の v1.3 要件を基準にしています。
 

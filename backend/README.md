@@ -1,4 +1,4 @@
-# NeonWave Backend
+# RyThM_Music_Analys Backend
 
 FastAPI と MySQL を用いた音源解析 SaaS の API 実装です。API バージョンは `/api/v1`、日時の業務基準は `Asia/Tokyo` です。
 

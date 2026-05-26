@@ -15,7 +15,7 @@ def create_analysis_report(analysis: SongAnalysis, username: str) -> BytesIO:
     grid = fig.add_gridspec(3, 2, height_ratios=[0.8, 1.4, 1.4], hspace=0.5, wspace=0.3)
     title = fig.add_subplot(grid[0, :])
     title.axis("off")
-    title.text(0, 0.8, "NEONWAVE / AUDIO ANALYSIS REPORT", color="#ff3cac", fontsize=20, weight="bold")
+    title.text(0, 0.8, "RYTHM_MUSIC_ANALYS / AUDIO ANALYSIS REPORT", color="#ff3cac", fontsize=20, weight="bold")
     title.text(0, 0.32, f"{analysis.original_filename}   |   USER: {username}", color="#dbe7ff", fontsize=11)
     metrics = fig.add_subplot(grid[1, 0])
     metrics.axis("off")

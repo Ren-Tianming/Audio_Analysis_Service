@@ -35,7 +35,7 @@ export function App() {
     setNotice("");
   }
 
-  if (booting) return <div className="boot-screen"><div className="pulse-ring" /> CONNECTING TO NEONWAVE</div>;
+  if (booting) return <div className="boot-screen"><div className="pulse-ring" /> CONNECTING TO RYTHM_MUSIC_ANALYS</div>;
   if (!user) return <Landing onSignedIn={signedIn} />;
 
   return (
@@ -126,7 +126,7 @@ function AuthPanel({ onSignedIn }: { onSignedIn: (data: { access_token: string; 
         <button type="button" className={register ? "active" : ""} onClick={() => setRegister(true)}>CREATE</button>
       </div>
       <h2>{register ? "Create your signal ID" : "Enter the studio"}</h2>
-      {register && <Field label="DISPLAY NAME" value={username} onChange={setUsername} placeholder="neon_creator" />}
+      {register && <Field label="DISPLAY NAME" value={username} onChange={setUsername} placeholder="rythm_creator" />}
       <Field label="EMAIL" value={email} onChange={setEmail} placeholder="you@studio.jp" type="email" />
       <Field label="PASSWORD" value={password} onChange={setPassword} placeholder="8文字以上" type="password" />
       {error && <p className="form-error">{error}</p>}
@@ -392,7 +392,15 @@ function Admin() {
 }
 
 function Brand() {
-  return <div className="brand"><i /><strong>NEON<span>WAVE</span></strong><small>AUDIO INTELLIGENCE</small></div>;
+  return (
+    <div className="brand">
+      <img src="/rythm-logo.png" alt="RyThM Music logo" />
+      <div>
+        <strong>RyThM_<span>Music_Analys</span></strong>
+        <small>MUSIC INTELLIGENCE</small>
+      </div>
+    </div>
+  );
 }
 
 function Field({ label, value, onChange, placeholder, type = "text" }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; type?: string }) {

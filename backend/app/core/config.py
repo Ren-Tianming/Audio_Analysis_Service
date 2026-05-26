@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="AUDIO_", extra="ignore")
 
-    app_name: str = "NeonWave Audio Analysis"
+    app_name: str = "RyThM_Music_Analys"
     environment: str = "development"
     api_prefix: str = "/api/v1"
     database_url: str = "mysql+pymysql://audio_user:audio_password@localhost:3306/audio_analysis?charset=utf8mb4"
