@@ -7,7 +7,7 @@ def register(client: TestClient, email: str) -> tuple[str, dict]:
         "/api/v1/auth/register",
         json={
             "email": email,
-            "username": "creator",
+            "username": "制作者",
             "password": "secure-pass-123",
             "password_confirmation": "secure-pass-123",
         },
@@ -29,7 +29,7 @@ def fake_analysis(_: object) -> dict:
         "sample_rate": 44100,
         "channels": 2,
         "bpm": 128.0,
-        "musical_key": "F# Minor",
+        "musical_key": "F# マイナー",
         "rms": 0.124,
         "lufs": -12.4,
         "waveform": [0.1, -0.1],
@@ -111,7 +111,7 @@ def test_mock_payment_is_idempotent_and_api_key_is_shown_once(client: TestClient
     assert duplicate.status_code == 409
     assert client.get("/api/v1/points/balance", headers=headers(token)).json()["points_balance"] == 120
 
-    issued = client.post("/api/v1/api-keys", json={"name": "DAW Connector"}, headers=headers(token)).json()
+    issued = client.post("/api/v1/api-keys", json={"name": "DAW 連携"}, headers=headers(token)).json()
     listed = client.get("/api/v1/api-keys", headers=headers(token)).json()
     assert issued["api_key"].startswith("aas_")
     assert "api_key" not in listed[0]
@@ -132,7 +132,7 @@ def test_refresh_token_rotation_and_logout_all(client: TestClient) -> None:
         "/api/v1/auth/register",
         json={
             "email": "rotation@example.com",
-            "username": "creator",
+            "username": "制作者",
             "password": "secure-pass-123",
             "password_confirmation": "secure-pass-123",
         },

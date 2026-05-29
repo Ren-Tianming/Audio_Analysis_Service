@@ -57,7 +57,7 @@ def record_http_metric(request: Request, status_code: int, duration_seconds: flo
 
 def metrics_text() -> str:
     lines = [
-        "# HELP aas_http_requests_total Total HTTP requests.",
+        "# HELP aas_http_requests_total HTTP リクエスト総数。",
         "# TYPE aas_http_requests_total counter",
     ]
     for (method, path, status), value in sorted(_request_counts.items()):
@@ -66,7 +66,7 @@ def metrics_text() -> str:
         )
     lines.extend(
         [
-            "# HELP aas_http_request_duration_seconds Request duration summary.",
+            "# HELP aas_http_request_duration_seconds HTTP リクエスト処理時間の集計。",
             "# TYPE aas_http_request_duration_seconds summary",
         ]
     )
@@ -97,7 +97,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             duration = time.perf_counter() - started_at
             record_http_metric(request, status_code, duration)
             logging.getLogger("audio_analysis_system.http").info(
-                "%s %s completed with %s in %.4fs",
+                "%s %s はステータス %s で %.4f 秒以内に完了しました",
                 request.method,
                 request.url.path,
                 status_code,

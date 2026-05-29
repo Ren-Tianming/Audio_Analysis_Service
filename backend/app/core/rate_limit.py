@@ -27,8 +27,8 @@ class RateLimiter:
 
                 self._redis = Redis.from_url(settings.redis_url, socket_connect_timeout=0.3, socket_timeout=0.3)
                 self._redis.ping()
-            except Exception as exc:  # pragma: no cover - depends on local Redis availability
-                logger.warning("Redis rate limiter unavailable, falling back to in-memory limiter: %s", exc)
+            except Exception as exc:  # pragma: no cover - ローカル Redis の可用性に依存
+                logger.warning("Redis レート制限を利用できないため、プロセス内レート制限へ切り替えます: %s", exc)
                 self._redis = None
 
     def check(self, key: str, limit: int, window_seconds: int) -> LimitResult:

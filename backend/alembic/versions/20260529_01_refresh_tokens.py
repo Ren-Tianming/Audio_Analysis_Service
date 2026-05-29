@@ -1,8 +1,8 @@
-"""add hashed refresh token sessions
+"""ハッシュ化 refresh token セッションを追加する。
 
 Revision ID: 20260529_01
 Revises: 20260523_01
-Create Date: 2026-05-29
+作成日: 2026-05-29
 """
 
 from collections.abc import Sequence

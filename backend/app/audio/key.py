@@ -7,12 +7,12 @@ MINOR_PROFILE = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 
 
 
 def calculate_key(y: np.ndarray, sr: int) -> str:
-    """クロマ特徴と調性プロファイルから Major/Minor を推定する。"""
+    """クロマ特徴と調性プロファイルからメジャー / マイナーを推定する。"""
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr).mean(axis=1)
     major_scores = [np.corrcoef(chroma, np.roll(MAJOR_PROFILE, index))[0, 1] for index in range(12)]
     minor_scores = [np.corrcoef(chroma, np.roll(MINOR_PROFILE, index))[0, 1] for index in range(12)]
     major_index = int(np.argmax(major_scores))
     minor_index = int(np.argmax(minor_scores))
     if major_scores[major_index] >= minor_scores[minor_index]:
-        return f"{KEYS[major_index]} Major"
-    return f"{KEYS[minor_index]} Minor"
+        return f"{KEYS[major_index]} メジャー"
+    return f"{KEYS[minor_index]} マイナー"

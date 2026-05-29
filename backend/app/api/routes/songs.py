@@ -34,14 +34,14 @@ def owned_analysis(db: Session, user_id: int, analysis_id: int) -> SongAnalysis:
 def must_get_analysis(db: Session, analysis_id: int) -> SongAnalysis:
     analysis = db.get(SongAnalysis, analysis_id)
     if analysis is None:
-        raise RuntimeError(f"analysis {analysis_id} disappeared during processing")
+        raise RuntimeError(f"解析データ {analysis_id} が処理中に見つからなくなりました。")
     return analysis
 
 
 def must_get_job(db: Session, analysis_id: int) -> AnalysisJob:
     job = db.scalar(select(AnalysisJob).where(AnalysisJob.analysis_id == analysis_id))
     if job is None:
-        raise RuntimeError(f"analysis job for {analysis_id} disappeared during processing")
+        raise RuntimeError(f"解析ジョブ {analysis_id} が処理中に見つからなくなりました。")
     return job
 
 

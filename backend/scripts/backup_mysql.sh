@@ -18,7 +18,7 @@ mysqldump \
   --host="${MYSQL_HOST}" \
   --port="${MYSQL_PORT}" \
   --user="${MYSQL_USER}" \
-  --password="${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}" \
+  --password="${MYSQL_PASSWORD:?MYSQL_PASSWORD が必要です}" \
   "${MYSQL_DATABASE}" | gzip > "${out}"
 
-echo "backup written to ${out}"
+echo "バックアップを書き出しました: ${out}"

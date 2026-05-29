@@ -2,7 +2,7 @@
 
 Revision ID: 20260523_01
 Revises:
-Create Date: 2026-05-23
+作成日: 2026-05-23
 """
 
 from collections.abc import Sequence
