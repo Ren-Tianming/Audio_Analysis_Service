@@ -1,10 +1,9 @@
 import os
 
-from sqlalchemy import select
-
 from app.core.database import SessionLocal
 from app.core.security import hash_password
 from app.models import User
+from sqlalchemy import select
 
 
 def main() -> None:

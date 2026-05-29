@@ -12,6 +12,7 @@ export type User = {
 
 export type AuthResponse = {
   access_token: string;
+  refresh_token: string;
   user: User;
   daily_bonus_awarded: number;
 };
@@ -41,23 +42,60 @@ export type ApiKey = { id: number; key_prefix: string; name: string; status: str
 export type ApiUsage = { id: number; key_prefix: string; endpoint: string; status_code: number; points_cost: number; created_at: string };
 export type Transaction = { id: number; transaction_type: string; points_change: number; description: string; created_at: string };
 
-let accessToken = localStorage.getItem("rythm_music_analys_token") ?? "";
+const ACCESS_TOKEN_KEY = "audio_analysis_system_access_token";
+const REFRESH_TOKEN_KEY = "audio_analysis_system_refresh_token";
+
+let accessToken = localStorage.getItem(ACCESS_TOKEN_KEY) ?? "";
+let refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY) ?? "";
 
 export function setToken(token: string): void {
   accessToken = token;
   if (token) {
-    localStorage.setItem("rythm_music_analys_token", token);
+    localStorage.setItem(ACCESS_TOKEN_KEY, token);
   } else {
-    localStorage.removeItem("rythm_music_analys_token");
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+export function setSession(response: AuthResponse): void {
+  setToken(response.access_token);
+  refreshToken = response.refresh_token;
+  localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
+}
+
+export function clearTokens(): void {
+  accessToken = "";
+  refreshToken = "";
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+  if (!refreshToken) return false;
+  const response = await fetch(`${API_BASE}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: refreshToken })
+  });
+  if (!response.ok) {
+    clearTokens();
+    return false;
+  }
+  const data = (await response.json()) as AuthResponse;
+  setSession(data);
+  return true;
+}
+
+async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
   const headers = new Headers(init.headers);
   if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-  if (!(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
+  if (init.body !== undefined && !(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
   const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
   if (!response.ok) {
+    if (response.status === 401 && retry && refreshToken && !path.startsWith("/auth/")) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) return request<T>(path, init, false);
+    }
     const detail = await response.json().catch(() => ({ error: { message: "通信に失敗しました。" } }));
     throw new Error(detail.error?.message ?? "リクエストに失敗しました。");
   }
@@ -72,6 +110,12 @@ export const api = {
     }),
   login: (email: string, password: string) =>
     request<AuthResponse>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  logout: () =>
+    request("/auth/logout", {
+      method: "POST",
+      body: refreshToken ? JSON.stringify({ refresh_token: refreshToken }) : undefined
+    }),
+  logoutAll: () => request("/auth/logout-all", { method: "POST" }),
   me: () => request<User>("/auth/me"),
   balance: () => request<{ points_balance: number; analysis_cost: number }>("/points/balance"),
   transactions: () => request<Transaction[]>("/points/transactions"),

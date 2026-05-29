@@ -1,97 +1,106 @@
-# RyThM_Music_Analys
+# Audio_Analysis_System
 
 <p align="center">
-  <img src="frontend/public/rythm-logo.png" alt="RyThM_Music_Analys logo" width="240">
+  <img src="frontend/public/audio-analysis-logo.png" alt="Audio_Analysis_System logo" width="220">
 </p>
 
-音楽制作者・DJ・映像クリエイター向けの音源解析 SaaS `RyThM_Music_Analys` です。音源をアップロードすると BPM、Key、Duration、LUFS、RMS、波形、スペクトログラムを解析し、ポイント台帳、解析履歴、PDF レポート、API キー、疑似決済、管理者監査まで一つのプロダクトとして扱えます。
+`Audio_Analysis_System` 是面向音乐制作人、DJ、视频创作者和开发者的音频解析 SaaS。用户上传音频后，系统解析 BPM、Key、Duration、LUFS、RMS、波形和频谱图，并提供积分台账、解析历史、PDF 报告、API Key、管理员后台和审计日志。
 
-本実装は `audio_analysis_saas_v1_3_requirements_jp.docx` の v1.3 要件を基準にしています。
+## 功能覆盖
 
-## 主要機能
+- 认证安全: JWT access token、refresh token rotation、refresh token hash、单设备 logout、logout-all。
+- 数据层: MySQL 8、SQLAlchemy、Alembic migration、关键余额更新和订单支付使用 DB row lock。
+- 缓存/限流: Redis 优先的限流中间件，Redis 不可用时自动降级到进程内限流。
+- 权限: 普通用户、管理员权限、管理员操作审计日志。
+- 可观测性: JSON structured logging、`X-Request-ID` tracing、`/health`、`/ready`、Prometheus 文本格式 `/metrics`。
+- 商业化: 积分包、Mock Pay、订阅计划、优惠券、API Key 哈希保存、API usage log。
+- 工程化: Docker Compose、迁移任务与 API 容器分离、CI、lint、mypy、security scan、integration tests、coverage gate。
+- 前端: React + TypeScript + Vite 的真实 Web UI，支持登录、上传解析、历史、积分购买、API Key 和管理员后台。
+- 运维: MySQL backup/restore 脚本、HTTPS reverse proxy 示例配置。
 
-- JWT 認証: 登録、ログイン、現在ユーザー取得、パスワード変更、ログアウト導線
-- ポイント: 登録時 `+20 PT`、Asia/Tokyo 基準の日次初回ログイン `+10 PT`、解析成功時のみ `-5 PT`
-- 音源解析: MP3 / WAV / FLAC / M4A、最大 50 MB・10 分、BPM / Major-Minor Key / LUFS / RMS / 可視化
-- 履歴とレポート: 自分の解析履歴検索、詳細、削除、ネオン調 PDF エクスポート
-- 商用化導線: ポイントパック、Mock Pay、プラン表示、クーポン基盤、API キー発行・無効化
-- 管理者機能: ユーザー状態、ポイント調整、注文状態、全解析履歴、設定、監査ログ API
-- UI: React + TypeScript + Vite によるダークパープル / ネオンピンク / ネオンブルーの SaaS 画面
+## 架构图
 
-## アーキテクチャ
-
-```text
-React / Vite UI
-      |
-      | REST / Bearer JWT または X-API-Key
-      v
-FastAPI (/api/v1)
-  |- Auth / Point / Commercial / Admin Services
-  |- Audio Analyzer (librosa + pyloudnorm)
-  |- PDF Report Generator
-      |
-      v
-MySQL 8.x + Alembic
+```mermaid
+flowchart TD
+  Browser[React / Vite Frontend] --> Proxy[Nginx / ALB / HTTPS]
+  Proxy --> API[FastAPI API]
+  API --> MySQL[(RDS MySQL / MySQL 8)]
+  API --> Redis[(ElastiCache Redis / Redis)]
+  API --> Storage[(Upload Temp Storage)]
+  API --> Metrics[/health / ready / metrics/]
+  Admin[Admin User] --> Proxy
+  CI[GitHub Actions CI] --> Tests[lint / mypy / bandit / integration tests]
 ```
 
-アップロードした原音源はランダムな一時ファイル名で保持し、解析の成否にかかわらず処理後に削除します。MySQL にはファイル Hash とメタ情報、縮約した表示用可視化、台帳・監査情報のみを保存します。
+## 登录和 refresh token 流程
 
-## ディレクトリ
-
-```text
-backend/
-  alembic/                 MySQL スキーママイグレーション
-  app/api/routes/          機能別 REST API
-  app/core/                設定、DB、セキュリティ、共通エラー
-  app/models/              SQLAlchemy モデル
-  app/schemas/             Pydantic 入出力
-  app/services/            認証、台帳、解析、保存、レポート
-  tests/                   受入条件に対応する API テスト
-frontend/
-  src/                     React UI と API クライアント
-docker-compose.yml         MySQL / Backend / Frontend 起動
+```mermaid
+sequenceDiagram
+  participant UI as Frontend
+  participant API as FastAPI
+  participant DB as MySQL
+  UI->>API: POST /api/v1/auth/login
+  API->>DB: verify user + create hashed refresh token
+  API-->>UI: access token + refresh token
+  UI->>API: API request with Bearer access token
+  API-->>UI: 401 when access token expired
+  UI->>API: POST /api/v1/auth/refresh
+  API->>DB: SELECT refresh token FOR UPDATE
+  API->>DB: revoke old token + insert new hashed token
+  API-->>UI: new access token + new refresh token
+  UI->>API: POST /api/v1/auth/logout-all
+  API->>DB: revoke all active refresh tokens for user
 ```
 
-## Docker Compose で起動
+## 解析扣点流程
 
-Docker 環境がある場合は、MySQL、API、Web UI をまとめて起動できます。
+```mermaid
+sequenceDiagram
+  participant UI as Frontend/API Client
+  participant API as FastAPI
+  participant DB as MySQL
+  participant Analyzer as Audio Analyzer
+  UI->>API: POST /api/v1/songs/analyze
+  API->>DB: create uploaded_file, song_analysis, analysis_job
+  API->>Analyzer: analyze temporary audio file
+  Analyzer-->>API: BPM / Key / LUFS / RMS / waveform / spectrogram
+  API->>DB: SELECT user FOR UPDATE
+  API->>DB: insert point transaction + update balance
+  API->>DB: mark analysis_job SUCCESS
+  API-->>UI: analysis result
+```
+
+## Docker Compose
 
 ```bash
 docker compose up --build
 ```
 
-起動後:
+启动后:
 
 - Web UI: `http://localhost:8080`
-- API ドキュメント: `http://localhost:8000/docs`
-- ヘルスチェック: `http://localhost:8000/health`
+- API docs: `http://localhost:8000/docs`
+- Health: `http://localhost:8000/health`
+- Ready: `http://localhost:8000/ready`
+- Metrics: `http://localhost:8000/metrics`
 
-Compose 起動時にバックエンドコンテナが `alembic upgrade head` を実行します。本番では `.env.example` の JWT シークレットとデータベース認証情報を必ず置換してください。
+Compose 中包含 `mysql`、`redis`、`migrations`、`backend`、`frontend`。`migrations` 容器单独执行 `alembic upgrade head`，成功后 API 容器才启动。
 
-管理者は DB 作成後に `backend/scripts/create_admin.py` を環境変数付きで実行して初期発行します。詳細は `backend/README.md` を参照してください。
+## 本地开发
 
-## ローカル開発
-
-### Backend
+Backend:
 
 ```bash
 cd backend
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 cp ../.env.example .env
 alembic -c alembic.ini upgrade head
 uvicorn app.main:app --reload
 ```
 
-MySQL を使用せず短時間で API を確認する場合のみ、ローカル用設定として次を利用できます。本番用データベースは MySQL を前提とします。
-
-```bash
-export AUDIO_DATABASE_URL=sqlite:///./local-dev.db
-export AUDIO_AUTO_CREATE_TABLES=true
-```
-
-### Frontend
+Frontend:
 
 ```bash
 cd frontend
@@ -99,29 +108,77 @@ npm install
 npm run dev
 ```
 
-開発サーバーは `/api` を `http://localhost:8000` へプロキシします。別ホストの API を利用する場合は `frontend/.env.example` を参考に `VITE_API_BASE_URL` を設定してください。
+不用 MySQL 做快速本地 API 验证时，可以临时使用 SQLite:
 
-## テスト
+```bash
+export AUDIO_DATABASE_URL=sqlite:///./local-dev.db
+export AUDIO_AUTO_CREATE_TABLES=true
+export AUDIO_REDIS_URL=
+```
+
+## 测试和质量检查
 
 ```bash
 cd backend
-pytest
+ruff check .
+mypy app scripts
+bandit -r app scripts -x tests
+pytest --cov=app --cov-report=term-missing --cov-fail-under=60
 
 cd ../frontend
+npm run lint
 npm run build
 ```
 
-バックエンドテストは SQLite の隔離 DB を利用して、登録ボーナス、日次ログイン付与の重複防止、成功解析のみの消費、残高不足拒否、履歴の所有権、Mock Pay 冪等性、API キーの平文非再表示を確認します。
+## 备份和恢复
 
-## セキュリティと整合性
+```bash
+cd backend
+MYSQL_HOST=127.0.0.1 MYSQL_USER=audio_user MYSQL_PASSWORD=audio_password ./scripts/backup_mysql.sh
+MYSQL_HOST=127.0.0.1 MYSQL_USER=audio_user MYSQL_PASSWORD=audio_password ./scripts/restore_mysql.sh ./backups/audio_analysis_YYYYMMDD_HHMMSS.sql.gz
+```
 
-- パスワードは `bcrypt` でハッシュ化し、JWT には有効期限を設定します。
-- API キーは発行時のみ平文で返却し、データベースには SHA-256 Hash のみ保存します。
-- ポイント増減は `point_transactions` に必ず記録し、残高更新と同じトランザクションで処理します。
-- 解析結果の確定とポイント消費も同一トランザクションで扱い、同時処理時に残高が負にならないようユーザー行をロックします。
-- Mock Pay は既に `PAID` の注文を再処理せず、二重付与を拒否します。
-- 一般ユーザーは自分の解析履歴とキーのみ参照できます。管理者の重要操作は `admin_audit_logs` に記録します。
+生产环境建议优先使用 RDS automated backup + point-in-time recovery；脚本用于低成本 EC2 或紧急手动导出。
 
-## 次段階の本番拡張
+## HTTPS / Reverse Proxy
 
-v1.3 の商用化雛形では解析ジョブ状態を保存しつつ、解析処理は API プロセス内で完了させます。高トラフィック運用へ進む段階では、Redis/Celery 等の耐障害キュー、S3 互換オブジェクトストレージ、外部決済、アクセストークン失効リスト、レート制限、監視・アラートを導入する設計です。
+示例配置在 `deploy/nginx/audio-analysis-system.conf`。需要替换:
+
+- `server_name example.com www.example.com`
+- Let’s Encrypt 证书路径
+- 后端和前端 upstream 地址
+
+本地 Compose 的 `frontend/nginx.conf` 已代理 `/api`、`/health`、`/ready` 和 `/metrics`。
+
+## 最低成本 AWS 部署建议
+
+最低成本、数据库前后端分离的推荐路径:
+
+```text
+Route53 / Domain
+        ↓
+ACM + ALB 或 EC2 Nginx + Let's Encrypt
+        ↓
+EC2 Docker Compose 或 ECS Fargate
+        ↓
+RDS MySQL db.t4g.micro / db.t4g.small
+        ↓
+ElastiCache Redis cache.t4g.micro
+```
+
+成本优先方案:
+
+- 前端: S3 + CloudFront 最省；如果先求简单，可先放在同一台 EC2 的 Nginx。
+- 后端: 单台 EC2 `t4g.small` 跑 Docker Compose，稳定后迁到 ECS Fargate。
+- 数据库: RDS MySQL 单 AZ 起步，打开自动备份，生产后再做 Multi-AZ。
+- Redis: ElastiCache 单节点 `cache.t4g.micro` 起步；预算极低时可先用同机 Redis，但生产隔离性较差。
+- HTTPS: 有 ALB 时用 ACM；没有 ALB 时 EC2 Nginx + Let’s Encrypt 成本最低。
+- 域名: Route53 托管域名，A/AAAA 指向 ALB，或 A 记录指向 EC2 Elastic IP。
+
+生产最低安全基线:
+
+- `AUDIO_JWT_SECRET_KEY` 使用随机长密钥，不能使用示例值。
+- RDS/Redis 放私有子网，只允许后端安全组访问。
+- 后端只通过 ALB/Nginx 暴露，关闭数据库公网访问。
+- 开启 RDS automated backups，保留 7-14 天。
+- CloudWatch 收集容器日志，至少对 `/ready`、5xx、CPU、RDS storage 设置告警。

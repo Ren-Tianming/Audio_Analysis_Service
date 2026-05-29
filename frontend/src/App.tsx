@@ -1,5 +1,16 @@
 import { type DragEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { api, type Analysis, type ApiKey, type ApiUsage, type Package, type Plan, type Transaction, type User, setToken } from "./api";
+import {
+  api,
+  clearTokens,
+  setSession,
+  type Analysis,
+  type ApiKey,
+  type ApiUsage,
+  type Package,
+  type Plan,
+  type Transaction,
+  type User
+} from "./api";
 
 type Page = "dashboard" | "analyze" | "history" | "pricing" | "keys" | "admin";
 
@@ -14,7 +25,7 @@ export function App() {
       setBooting(false);
       return;
     }
-    api.me().then(setUser).catch(() => setToken("")).finally(() => setBooting(false));
+    api.me().then(setUser).catch(() => clearTokens()).finally(() => setBooting(false));
   }, []);
 
   async function refreshUser() {
@@ -22,20 +33,21 @@ export function App() {
     setUser(current);
   }
 
-  function signedIn(response: { access_token: string; user: User; daily_bonus_awarded: number }) {
-    setToken(response.access_token);
+  function signedIn(response: { access_token: string; refresh_token: string; user: User; daily_bonus_awarded: number }) {
+    setSession(response);
     setUser(response.user);
     setPage("dashboard");
     if (response.daily_bonus_awarded) setNotice(`デイリーボーナス +${response.daily_bonus_awarded} PT を獲得しました。`);
   }
 
-  function logout() {
-    setToken("");
+  async function logout() {
+    await api.logout().catch(() => undefined);
+    clearTokens();
     setUser(null);
     setNotice("");
   }
 
-  if (booting) return <div className="boot-screen"><div className="pulse-ring" /> CONNECTING TO RYTHM_MUSIC_ANALYS</div>;
+  if (booting) return <div className="boot-screen"><div className="pulse-ring" /> CONNECTING TO AUDIO_ANALYSIS_SYSTEM</div>;
   if (!user) return <Landing onSignedIn={signedIn} />;
 
   return (
@@ -65,7 +77,7 @@ function Background() {
   );
 }
 
-function Landing({ onSignedIn }: { onSignedIn: (data: { access_token: string; user: User; daily_bonus_awarded: number }) => void }) {
+function Landing({ onSignedIn }: { onSignedIn: (data: { access_token: string; refresh_token: string; user: User; daily_bonus_awarded: number }) => void }) {
   return (
     <div className="landing">
       <Background />
@@ -97,7 +109,7 @@ function Landing({ onSignedIn }: { onSignedIn: (data: { access_token: string; us
   );
 }
 
-function AuthPanel({ onSignedIn }: { onSignedIn: (data: { access_token: string; user: User; daily_bonus_awarded: number }) => void }) {
+function AuthPanel({ onSignedIn }: { onSignedIn: (data: { access_token: string; refresh_token: string; user: User; daily_bonus_awarded: number }) => void }) {
   const [register, setRegister] = useState(false);
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -126,7 +138,7 @@ function AuthPanel({ onSignedIn }: { onSignedIn: (data: { access_token: string; 
         <button type="button" className={register ? "active" : ""} onClick={() => setRegister(true)}>CREATE</button>
       </div>
       <h2>{register ? "Create your signal ID" : "Enter the studio"}</h2>
-      {register && <Field label="DISPLAY NAME" value={username} onChange={setUsername} placeholder="rythm_creator" />}
+      {register && <Field label="DISPLAY NAME" value={username} onChange={setUsername} placeholder="audio_creator" />}
       <Field label="EMAIL" value={email} onChange={setEmail} placeholder="you@studio.jp" type="email" />
       <Field label="PASSWORD" value={password} onChange={setPassword} placeholder="8文字以上" type="password" />
       {error && <p className="form-error">{error}</p>}
@@ -394,10 +406,10 @@ function Admin() {
 function Brand() {
   return (
     <div className="brand">
-      <img src="/rythm-logo.png" alt="RyThM Music logo" />
+      <img src="/audio-analysis-logo.png" alt="Audio_Analysis_System logo" />
       <div>
-        <strong>RyThM_<span>Music_Analys</span></strong>
-        <small>MUSIC INTELLIGENCE</small>
+        <strong>Audio_<span>Analysis_System</span></strong>
+        <small>AUDIO INTELLIGENCE</small>
       </div>
     </div>
   );

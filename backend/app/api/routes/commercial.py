@@ -33,7 +33,6 @@ from app.schemas.api import (
 )
 from app.services.points import apply_points
 
-
 router = APIRouter(tags=["商用機能"])
 
 
@@ -156,7 +155,7 @@ def redeem_coupon(
         count = db.scalar(
             select(func.count()).select_from(CouponRedemption).where(CouponRedemption.coupon_id == coupon.id)
         )
-        if count >= coupon.max_redemptions:
+        if (count or 0) >= coupon.max_redemptions:
             raise AppError(409, "COUPON_LIMIT_REACHED", "クーポンの利用上限に達しました。")
     if coupon.coupon_type != "POINTS":
         raise AppError(409, "COUPON_NOT_SUPPORTED", "現在はポイント付与型のみ利用できます。")

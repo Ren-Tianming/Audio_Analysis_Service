@@ -8,7 +8,6 @@ from app.core.database import get_db
 from app.models import PointTransaction, User
 from app.schemas.api import BalanceResponse, PointTransactionResponse, ProfileUpdate, UserResponse
 
-
 settings = get_settings()
 router = APIRouter(tags=["ユーザー・ポイント"])
 

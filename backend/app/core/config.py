@@ -11,13 +11,16 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="AUDIO_", extra="ignore")
 
-    app_name: str = "RyThM_Music_Analys"
+    app_name: str = "Audio_Analysis_System"
     environment: str = "development"
+    log_level: str = "INFO"
     api_prefix: str = "/api/v1"
     database_url: str = "mysql+pymysql://audio_user:audio_password@localhost:3306/audio_analysis?charset=utf8mb4"
+    redis_url: str = "redis://localhost:6379/0"
     jwt_secret_key: str = Field(default="change-this-secret-in-production", min_length=16)
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
+    refresh_token_expire_days: int = 30
     cors_origins: str = "http://localhost:5173"
     timezone: str = "Asia/Tokyo"
     upload_dir: Path = Path("storage/uploads")
@@ -27,6 +30,9 @@ class Settings(BaseSettings):
     registration_bonus: int = 20
     daily_login_bonus: int = 10
     auto_create_tables: bool = False
+    rate_limit_requests: int = 60
+    auth_rate_limit_requests: int = 10
+    rate_limit_window_seconds: int = 60
 
     @property
     def allowed_origins(self) -> list[str]:

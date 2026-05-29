@@ -1,6 +1,5 @@
-from fastapi.testclient import TestClient
-
 from app.api.routes import songs
+from fastapi.testclient import TestClient
 
 
 def register(client: TestClient, email: str) -> tuple[str, dict]:
@@ -15,6 +14,7 @@ def register(client: TestClient, email: str) -> tuple[str, dict]:
     )
     assert response.status_code == 201
     body = response.json()
+    assert body["refresh_token"]
     return body["access_token"], body["user"]
 
 
@@ -43,6 +43,7 @@ def test_register_and_daily_login_bonus_are_recorded_once(client: TestClient) ->
 
     first = client.post("/api/v1/auth/login", json={"email": "bonus@example.com", "password": "secure-pass-123"})
     second = client.post("/api/v1/auth/login", json={"email": "bonus@example.com", "password": "secure-pass-123"})
+    assert first.json()["refresh_token"] != second.json()["refresh_token"]
     assert first.json()["daily_bonus_awarded"] == 10
     assert first.json()["user"]["points_balance"] == 30
     assert second.json()["daily_bonus_awarded"] == 0
@@ -50,6 +51,16 @@ def test_register_and_daily_login_bonus_are_recorded_once(client: TestClient) ->
 
     ledger = client.get("/api/v1/points/transactions", headers=headers(second.json()["access_token"])).json()
     assert {entry["transaction_type"] for entry in ledger} == {"REGISTER_BONUS", "DAILY_LOGIN_BONUS"}
+
+
+def test_operational_endpoints_expose_readiness_request_id_and_metrics(client: TestClient) -> None:
+    ready = client.get("/ready")
+    assert ready.status_code == 200
+    assert ready.json()["checks"]["database"] == "ok"
+    health = client.get("/health", headers={"X-Request-ID": "test-trace-id"})
+    assert health.headers["X-Request-ID"] == "test-trace-id"
+    metrics = client.get("/metrics")
+    assert "aas_http_requests_total" in metrics.text
 
 
 def test_successful_analysis_consumes_points_and_protects_ownership(
@@ -102,7 +113,7 @@ def test_mock_payment_is_idempotent_and_api_key_is_shown_once(client: TestClient
 
     issued = client.post("/api/v1/api-keys", json={"name": "DAW Connector"}, headers=headers(token)).json()
     listed = client.get("/api/v1/api-keys", headers=headers(token)).json()
-    assert issued["api_key"].startswith("nwa_")
+    assert issued["api_key"].startswith("aas_")
     assert "api_key" not in listed[0]
 
     analyzed = client.post(
@@ -114,3 +125,31 @@ def test_mock_payment_is_idempotent_and_api_key_is_shown_once(client: TestClient
     assert analyzed.status_code == 201
     assert usage[0]["status_code"] == 201
     assert usage[0]["points_cost"] == 5
+
+
+def test_refresh_token_rotation_and_logout_all(client: TestClient) -> None:
+    initial = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "rotation@example.com",
+            "username": "creator",
+            "password": "secure-pass-123",
+            "password_confirmation": "secure-pass-123",
+        },
+    ).json()
+    rotated = client.post("/api/v1/auth/refresh", json={"refresh_token": initial["refresh_token"]})
+    assert rotated.status_code == 200
+    assert rotated.json()["refresh_token"] != initial["refresh_token"]
+
+    reused = client.post("/api/v1/auth/refresh", json={"refresh_token": initial["refresh_token"]})
+    assert reused.status_code == 401
+    assert reused.json()["error"]["code"] == "REFRESH_TOKEN_REUSED"
+
+    login = client.post(
+        "/api/v1/auth/login",
+        json={"email": "rotation@example.com", "password": "secure-pass-123"},
+    ).json()
+    logout = client.post("/api/v1/auth/logout-all", headers=headers(login["access_token"]))
+    assert logout.status_code == 200
+    rejected = client.post("/api/v1/auth/refresh", json={"refresh_token": login["refresh_token"]})
+    assert rejected.status_code == 401

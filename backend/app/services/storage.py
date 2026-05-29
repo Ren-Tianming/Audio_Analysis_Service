@@ -1,13 +1,12 @@
+import uuid
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-import uuid
 
 from fastapi import UploadFile
 
 from app.core.config import get_settings
 from app.core.errors import AppError
-
 
 settings = get_settings()
 ALLOWED_SUFFIXES = {".mp3", ".wav", ".flac", ".m4a"}

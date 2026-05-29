@@ -25,7 +25,6 @@ from app.schemas.api import (
 )
 from app.services.points import apply_points
 
-
 router = APIRouter(prefix="/admin", tags=["管理者"])
 
 

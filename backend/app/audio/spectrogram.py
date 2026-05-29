@@ -9,4 +9,4 @@ def get_spectrogram(y: np.ndarray, sr: int, max_frames: int = 180) -> list[list[
     if spec_db.shape[1] > max_frames:
         indexes = np.linspace(0, spec_db.shape[1] - 1, max_frames).astype(int)
         spec_db = spec_db[:, indexes]
-    return np.round(spec_db, 2).tolist()
+    return [[float(value) for value in row] for row in np.round(spec_db, 2).tolist()]

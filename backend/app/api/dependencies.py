@@ -9,7 +9,6 @@ from app.core.errors import AppError
 from app.core.security import decode_access_token, hash_api_key
 from app.models import ApiKey, User
 
-
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
@@ -21,6 +20,8 @@ def get_current_user(
         raise AppError(401, "UNAUTHORIZED", "ログインが必要です。")
     try:
         payload = decode_access_token(credentials.credentials)
+        if payload.get("type") != "access":
+            raise InvalidTokenError
         user_id = int(payload["sub"])
     except (InvalidTokenError, KeyError, ValueError):
         raise AppError(401, "INVALID_TOKEN", "認証トークンが無効です。") from None

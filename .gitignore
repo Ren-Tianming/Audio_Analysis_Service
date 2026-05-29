@@ -1,34 +1,32 @@
-# Python
+.DS_Store
+.env
+.env.*
+!.env.example
+!frontend/.env.example
+
+.venv/
 venv/
+backend/.venv/
+backend/local-dev.db
+*.db
+
 __pycache__/
 *.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+backups/
+backend/backups/
 
-# Env
-.env
-
-# macOS
-.DS_Store
-
-# IDE
-.vscode/
-.idea/
-
-# Logs
-*.log
-
-# Build / Runtime
 node_modules/
-dist/
-*.tsbuildinfo
+frontend/dist/
+
 storage/uploads/*
 !storage/uploads/.gitkeep
-.pytest_cache/
-.coverage
 
-# Temp / Test
-test.py
-tmp_test.py
-tmp_*.py
-
-# mp3 music file
 *.mp3
+*.wav
+*.flac
+*.m4a

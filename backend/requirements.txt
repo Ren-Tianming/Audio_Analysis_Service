@@ -10,9 +10,12 @@ email-validator==2.2.0
 
 PyJWT==2.10.1
 bcrypt==4.3.0
+redis==5.2.1
 
 librosa==0.11.0
 numpy==2.0.2
+numba==0.61.2
+llvmlite==0.44.0
 scipy==1.15.2
 soundfile==0.13.1
 pyloudnorm==0.1.1

@@ -18,7 +18,6 @@ from app.services.points import apply_points
 from app.services.report import create_analysis_report
 from app.services.storage import persist_upload
 
-
 settings = get_settings()
 router = APIRouter(prefix="/songs", tags=["音源解析"])
 
@@ -30,6 +29,20 @@ def owned_analysis(db: Session, user_id: int, analysis_id: int) -> SongAnalysis:
     if analysis is None:
         raise AppError(404, "ANALYSIS_NOT_FOUND", "解析履歴が見つかりません。")
     return analysis
+
+
+def must_get_analysis(db: Session, analysis_id: int) -> SongAnalysis:
+    analysis = db.get(SongAnalysis, analysis_id)
+    if analysis is None:
+        raise RuntimeError(f"analysis {analysis_id} disappeared during processing")
+    return analysis
+
+
+def must_get_job(db: Session, analysis_id: int) -> AnalysisJob:
+    job = db.scalar(select(AnalysisJob).where(AnalysisJob.analysis_id == analysis_id))
+    if job is None:
+        raise RuntimeError(f"analysis job for {analysis_id} disappeared during processing")
+    return job
 
 
 def record_api_usage(db: Session, api_key_value: str | None, status_code: int, points_cost: int) -> None:
@@ -84,9 +97,10 @@ def analyze(
     job = AnalysisJob(analysis_id=analysis.id, status="PROCESSING", started_at=datetime.utcnow())
     db.add(job)
     db.commit()
+    analysis_id = analysis.id
     try:
         result = analyze_audio(stored.path)
-        analysis = db.get(SongAnalysis, analysis.id)
+        analysis = must_get_analysis(db, analysis_id)
         for key, value in result.items():
             setattr(analysis, key, value)
         apply_points(
@@ -96,11 +110,11 @@ def analyze(
             "ANALYSIS_COST",
             "音源解析ポイント消費",
             "song_analysis",
-            analysis.id,
+            analysis_id,
         )
         analysis.points_cost = settings.analysis_points_cost
         analysis.status = "SUCCESS"
-        job = db.scalar(select(AnalysisJob).where(AnalysisJob.analysis_id == analysis.id))
+        job = must_get_job(db, analysis_id)
         job.status = "SUCCESS"
         job.finished_at = datetime.utcnow()
         record_api_usage(db, api_key_value, 201, settings.analysis_points_cost)
@@ -109,10 +123,10 @@ def analyze(
         return analysis
     except AppError as exc:
         db.rollback()
-        failed = db.get(SongAnalysis, analysis.id)
+        failed = must_get_analysis(db, analysis_id)
         failed.status = "FAILED"
         failed.error_message = exc.message
-        failed_job = db.scalar(select(AnalysisJob).where(AnalysisJob.analysis_id == failed.id))
+        failed_job = must_get_job(db, analysis_id)
         failed_job.status = "FAILED"
         failed_job.error_message = exc.message
         failed_job.finished_at = datetime.utcnow()
@@ -121,16 +135,16 @@ def analyze(
         raise
     except Exception as exc:
         db.rollback()
-        failed = db.get(SongAnalysis, analysis.id)
+        failed = must_get_analysis(db, analysis_id)
         failed.status = "FAILED"
         failed.error_message = "解析処理で予期しないエラーが発生しました。"
-        failed_job = db.scalar(select(AnalysisJob).where(AnalysisJob.analysis_id == failed.id))
+        failed_job = must_get_job(db, analysis_id)
         failed_job.status = "FAILED"
         failed_job.error_message = failed.error_message
         failed_job.finished_at = datetime.utcnow()
         record_api_usage(db, api_key_value, 422, 0)
         db.commit()
-        raise AppError(422, "AUDIO_ANALYSIS_FAILED", failed.error_message) from exc
+        raise AppError(422, "AUDIO_ANALYSIS_FAILED", failed.error_message or "解析処理に失敗しました。") from exc
     finally:
         Path(stored.path).unlink(missing_ok=True)
         retained = db.get(UploadedFile, uploaded.id)
@@ -163,7 +177,7 @@ def history(
         query = query.where(SongAnalysis.status == status)
     items = list(db.scalars(query.order_by(desc(SongAnalysis.created_at)).limit(100)))
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
-    return HistoryList(items=items, total=total)
+    return HistoryList(items=[SongAnalysisResponse.model_validate(item) for item in items], total=total)
 
 
 @router.get("/history/{analysis_id}", response_model=SongAnalysisResponse)

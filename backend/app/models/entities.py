@@ -2,6 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -10,7 +11,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    JSON,
     Numeric,
     String,
     Text,
@@ -20,7 +20,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
-
 
 SQLITE_COMPATIBLE_ID = BigInteger().with_variant(Integer, "sqlite")
 
@@ -48,6 +47,28 @@ class User(TimestampMixin, Base):
 
     point_transactions: Mapped[list["PointTransaction"]] = relationship(back_populates="user")
     analyses: Mapped[list["SongAnalysis"]] = relationship(back_populates="user")
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user")
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+    __table_args__ = (
+        Index("ix_refresh_tokens_user_family", "user_id", "family_id"),
+        Index("ix_refresh_tokens_hash", "token_hash"),
+    )
+
+    id: Mapped[int] = mapped_column(SQLITE_COMPATIBLE_ID, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    family_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    replaced_by_id: Mapped[int | None] = mapped_column(ForeignKey("refresh_tokens.id"), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="refresh_tokens")
 
 
 class DailyLoginReward(Base):
